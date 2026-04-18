@@ -1,0 +1,9 @@
+# macOS
+.DS_Store
+
+# Obsidian workspace (personal state — can be added later if cross-machine sync desired)
+.obsidian/
+
+# Editor temp
+*.swp
+*~
