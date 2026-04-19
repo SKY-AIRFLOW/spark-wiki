@@ -1,0 +1,183 @@
+=== Query: query-B-row-number-top5 ===
+=== Spark version: 3.5.3 ===
+=== Captured: 2026-04-19 ===
+=== Application ID: local-1776575126027 ===
+=== AQE enabled: true ===
+=== Shuffle partitions: 200 ===
+=== autoBroadcastJoinThreshold: 10485760b ===
+=== preferSortMergeJoin: true ===
+=== shuffle.hashJoinFactor: not set ===
+
+======================================================================
+=== 01 PARSED (Unresolved Logical Plan) ===
+======================================================================
+'Sort ['agent_gu ASC NULLS FIRST, 'price_rank ASC NULLS FIRST], true
++- 'Project ['agent_gu, 'apt_name, 'deal_date, 'deal_amount, 'area_sqm, 'price_rank]
+   +- 'Filter ('price_rank <= 5)
+      +- 'SubqueryAlias ranked
+         +- 'Project ['agent_gu, 'apt_name, 'deal_date, 'deal_amount, 'area_sqm, 'ROW_NUMBER() windowspecdefinition('agent_gu, 'deal_amount DESC NULLS LAST, unspecifiedframe$()) AS price_rank#296]
+            +- 'Filter (('deal_year = 2024) AND 'agent_gu LIKE 서울%)
+               +- 'UnresolvedRelation [nessie, real_estate, apt_trades], [], false
+
+
+======================================================================
+=== 02 ANALYZED (Analyzed Logical Plan) ===
+======================================================================
+Sort [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true
++- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296]
+   +- Filter (price_rank#296 <= 5)
+      +- SubqueryAlias ranked
+         +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296]
+            +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296, price_rank#296]
+               +- Window [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST]
+                  +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+                     +- Filter ((deal_year#301 = 2024) AND agent_gu#308 LIKE 서울%)
+                        +- SubqueryAlias nessie.real_estate.apt_trades
+                           +- RelationV2[apt_name#297, apt_dong#298, apt_seq#299, build_year#300, deal_year#301, deal_month#302, deal_day#303, deal_amount#304, area_sqm#305, floor#306, legal_dong#307, agent_gu#308, deal_type#309, buyer_type#310, seller_type#311, registration_date#312, deal_date#313] nessie.real_estate.apt_trades nessie.real_estate.apt_trades
+
+
+======================================================================
+=== 03 OPTIMIZED (Optimized Logical Plan) ===
+======================================================================
+Sort [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true
++- Filter (price_rank#296 <= 5)
+   +- Window [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST]
+      +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5
+         +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+            +- Filter (((isnotnull(deal_year#301) AND isnotnull(agent_gu#308)) AND (deal_year#301 = 2024)) AND StartsWith(agent_gu#308, 서울))
+               +- RelationV2[apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313] nessie.real_estate.apt_trades
+
+
+======================================================================
+=== 04 PHYSICAL (Spark Plan, pre-AQE) ===
+======================================================================
+Sort [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true, 0
++- Filter (price_rank#296 <= 5)
+   +- Window [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST]
+      +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Final
+         +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Partial
+            +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+               +- Filter (((isnotnull(deal_year#301) AND isnotnull(agent_gu#308)) AND (deal_year#301 = 2024)) AND StartsWith(agent_gu#308, 서울))
+                  +- BatchScan nessie.real_estate.apt_trades[apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', groupedBy=] RuntimeFilters: []
+
+
+======================================================================
+=== 04+AQE EXECUTED (Final Executed Plan) ===
+======================================================================
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=374]
+      +- Filter (price_rank#296 <= 5)
+         +- Window [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST]
+            +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Final
+               +- Sort [agent_gu#308 ASC NULLS FIRST, deal_amount#304 DESC NULLS LAST], false, 0
+                  +- Exchange hashpartitioning(agent_gu#308, 200), ENSURE_REQUIREMENTS, [plan_id=368]
+                     +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Partial
+                        +- Sort [agent_gu#308 ASC NULLS FIRST, deal_amount#304 DESC NULLS LAST], false, 0
+                           +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+                              +- Filter (((isnotnull(deal_year#301) AND isnotnull(agent_gu#308)) AND (deal_year#301 = 2024)) AND StartsWith(agent_gu#308, 서울))
+                                 +- BatchScan nessie.real_estate.apt_trades[apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', groupedBy=] RuntimeFilters: []
+
+
+======================================================================
+=== EXPLAIN FORMATTED (human-readable) ===
+======================================================================
+== Physical Plan ==
+AdaptiveSparkPlan (13)
++- Sort (12)
+   +- Exchange (11)
+      +- Filter (10)
+         +- Window (9)
+            +- WindowGroupLimit (8)
+               +- Sort (7)
+                  +- Exchange (6)
+                     +- WindowGroupLimit (5)
+                        +- Sort (4)
+                           +- Project (3)
+                              +- Filter (2)
+                                 +- BatchScan nessie.real_estate.apt_trades (1)
+
+
+(1) BatchScan nessie.real_estate.apt_trades
+Output [6]: [apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313]
+nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', groupedBy=]
+
+(2) Filter
+Input [6]: [apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313]
+Condition : (((isnotnull(deal_year#301) AND isnotnull(agent_gu#308)) AND (deal_year#301 = 2024)) AND StartsWith(agent_gu#308, 서울))
+
+(3) Project
+Output [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Input [6]: [apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313]
+
+(4) Sort
+Input [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Arguments: [agent_gu#308 ASC NULLS FIRST, deal_amount#304 DESC NULLS LAST], false, 0
+
+(5) WindowGroupLimit
+Input [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Arguments: [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Partial
+
+(6) Exchange
+Input [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Arguments: hashpartitioning(agent_gu#308, 200), ENSURE_REQUIREMENTS, [plan_id=368]
+
+(7) Sort
+Input [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Arguments: [agent_gu#308 ASC NULLS FIRST, deal_amount#304 DESC NULLS LAST], false, 0
+
+(8) WindowGroupLimit
+Input [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Arguments: [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Final
+
+(9) Window
+Input [5]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+Arguments: [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST]
+
+(10) Filter
+Input [6]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296]
+Condition : (price_rank#296 <= 5)
+
+(11) Exchange
+Input [6]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296]
+Arguments: rangepartitioning(agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=374]
+
+(12) Sort
+Input [6]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296]
+Arguments: [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true, 0
+
+(13) AdaptiveSparkPlan
+Output [6]: [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305, price_rank#296]
+Arguments: isFinalPlan=false
+
+
+
+======================================================================
+=== EXPLAIN COST (with statistics) ===
+======================================================================
+== Optimized Logical Plan ==
+Sort [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true, Statistics(sizeInBytes=30.5 MiB)
++- Filter (price_rank#296 <= 5), Statistics(sizeInBytes=30.5 MiB)
+   +- Window [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST], Statistics(sizeInBytes=30.5 MiB)
+      +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Statistics(sizeInBytes=28.7 MiB)
+         +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305], Statistics(sizeInBytes=28.7 MiB)
+            +- Filter (((isnotnull(deal_year#301) AND isnotnull(agent_gu#308)) AND (deal_year#301 = 2024)) AND StartsWith(agent_gu#308, 서울)), Statistics(sizeInBytes=30.5 MiB)
+               +- RelationV2[apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313] nessie.real_estate.apt_trades, Statistics(sizeInBytes=30.5 MiB, rowCount=5.32E+5)
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(agent_gu#308 ASC NULLS FIRST, price_rank#296 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=374]
+      +- Filter (price_rank#296 <= 5)
+         +- Window [row_number() windowspecdefinition(agent_gu#308, deal_amount#304 DESC NULLS LAST, specifiedwindowframe(RowFrame, unboundedpreceding$(), currentrow$())) AS price_rank#296], [agent_gu#308], [deal_amount#304 DESC NULLS LAST]
+            +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Final
+               +- Sort [agent_gu#308 ASC NULLS FIRST, deal_amount#304 DESC NULLS LAST], false, 0
+                  +- Exchange hashpartitioning(agent_gu#308, 200), ENSURE_REQUIREMENTS, [plan_id=368]
+                     +- WindowGroupLimit [agent_gu#308], [deal_amount#304 DESC NULLS LAST], row_number(), 5, Partial
+                        +- Sort [agent_gu#308 ASC NULLS FIRST, deal_amount#304 DESC NULLS LAST], false, 0
+                           +- Project [agent_gu#308, apt_name#297, deal_date#313, deal_amount#304, area_sqm#305]
+                              +- Filter (((isnotnull(deal_year#301) AND isnotnull(agent_gu#308)) AND (deal_year#301 = 2024)) AND StartsWith(agent_gu#308, 서울))
+                                 +- BatchScan nessie.real_estate.apt_trades[apt_name#297, deal_year#301, deal_amount#304, area_sqm#305, agent_gu#308, deal_date#313] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', groupedBy=] RuntimeFilters: []
+
+
+

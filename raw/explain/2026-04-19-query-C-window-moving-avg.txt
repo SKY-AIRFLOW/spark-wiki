@@ -1,0 +1,174 @@
+=== Query: query-C-window-moving-avg ===
+=== Spark version: 3.5.3 ===
+=== Captured: 2026-04-19 ===
+=== Application ID: local-1776575126027 ===
+=== AQE enabled: true ===
+=== Shuffle partitions: 200 ===
+=== autoBroadcastJoinThreshold: 10485760b ===
+=== preferSortMergeJoin: true ===
+=== shuffle.hashJoinFactor: not set ===
+
+======================================================================
+=== 01 PARSED (Unresolved Logical Plan) ===
+======================================================================
+CTE [monthly_avg]
+:  +- 'SubqueryAlias monthly_avg
+:     +- 'Aggregate ['agent_gu, 'deal_year, 'deal_month], ['agent_gu, 'deal_year, 'deal_month, 'AVG('deal_amount) AS avg_amount#364, 'COUNT(1) AS trade_count#365]
+:        +- 'Filter 'agent_gu LIKE 서울%
+:           +- 'UnresolvedRelation [nessie, real_estate, apt_trades], [], false
++- 'Sort ['agent_gu ASC NULLS FIRST, 'deal_year ASC NULLS FIRST, 'deal_month ASC NULLS FIRST], true
+   +- 'Project ['agent_gu, 'deal_year, 'deal_month, 'avg_amount, 'trade_count, 'AVG('avg_amount) windowspecdefinition('agent_gu, 'deal_year ASC NULLS FIRST, 'deal_month ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363]
+      +- 'UnresolvedRelation [monthly_avg], [], false
+
+
+======================================================================
+=== 02 ANALYZED (Analyzed Logical Plan) ===
+======================================================================
+WithCTE
+:- CTERelationDef 0, false
+:  +- SubqueryAlias monthly_avg
+:     +- Aggregate [agent_gu#377, deal_year#370, deal_month#371], [agent_gu#377, deal_year#370, deal_month#371, avg(deal_amount#373) AS avg_amount#364, count(1) AS trade_count#365L]
+:        +- Filter agent_gu#377 LIKE 서울%
+:           +- SubqueryAlias nessie.real_estate.apt_trades
+:              +- RelationV2[apt_name#366, apt_dong#367, apt_seq#368, build_year#369, deal_year#370, deal_month#371, deal_day#372, deal_amount#373, area_sqm#374, floor#375, legal_dong#376, agent_gu#377, deal_type#378, buyer_type#379, seller_type#380, registration_date#381, deal_date#382] nessie.real_estate.apt_trades nessie.real_estate.apt_trades
++- Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true
+   +- Project [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L, moving_avg_6m#363]
+      +- Project [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L, moving_avg_6m#363, moving_avg_6m#363]
+         +- Window [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST]
+            +- Project [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L]
+               +- SubqueryAlias monthly_avg
+                  +- CTERelationRef 0, true, [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L], false
+
+
+======================================================================
+=== 03 OPTIMIZED (Optimized Logical Plan) ===
+======================================================================
+Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true
++- Window [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST]
+   +- Aggregate [agent_gu#377, deal_year#370, deal_month#371], [agent_gu#377, deal_year#370, deal_month#371, avg(deal_amount#373) AS avg_amount#364, count(1) AS trade_count#365L]
+      +- Filter (isnotnull(agent_gu#377) AND StartsWith(agent_gu#377, 서울))
+         +- RelationV2[deal_year#370, deal_month#371, deal_amount#373, agent_gu#377] nessie.real_estate.apt_trades
+
+
+======================================================================
+=== 04 PHYSICAL (Spark Plan, pre-AQE) ===
+======================================================================
+Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true, 0
++- Window [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST]
+   +- HashAggregate(keys=[agent_gu#377, deal_year#370, deal_month#371], functions=[avg(deal_amount#373), count(1)], output=[agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L])
+      +- HashAggregate(keys=[agent_gu#377, deal_year#370, deal_month#371], functions=[partial_avg(deal_amount#373), partial_count(1)], output=[agent_gu#377, deal_year#370, deal_month#371, sum#404, count#405L, count#406L])
+         +- Project [deal_year#370, deal_month#371, deal_amount#373, agent_gu#377]
+            +- Filter (isnotnull(agent_gu#377) AND StartsWith(agent_gu#377, 서울))
+               +- BatchScan nessie.real_estate.apt_trades[deal_year#370, deal_month#371, deal_amount#373, agent_gu#377] nessie.real_estate.apt_trades (branch=null) [filters=agent_gu IS NOT NULL, agent_gu LIKE '서울%', groupedBy=] RuntimeFilters: []
+
+
+======================================================================
+=== 04+AQE EXECUTED (Final Executed Plan) ===
+======================================================================
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=511]
+      +- Window [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST]
+         +- Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], false, 0
+            +- Exchange hashpartitioning(agent_gu#377, 200), ENSURE_REQUIREMENTS, [plan_id=507]
+               +- HashAggregate(keys=[agent_gu#377, deal_year#370, deal_month#371], functions=[avg(deal_amount#373), count(1)], output=[agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L])
+                  +- Exchange hashpartitioning(agent_gu#377, deal_year#370, deal_month#371, 200), ENSURE_REQUIREMENTS, [plan_id=504]
+                     +- HashAggregate(keys=[agent_gu#377, deal_year#370, deal_month#371], functions=[partial_avg(deal_amount#373), partial_count(1)], output=[agent_gu#377, deal_year#370, deal_month#371, sum#404, count#405L, count#406L])
+                        +- Filter (isnotnull(agent_gu#377) AND StartsWith(agent_gu#377, 서울))
+                           +- BatchScan nessie.real_estate.apt_trades[deal_year#370, deal_month#371, deal_amount#373, agent_gu#377] nessie.real_estate.apt_trades (branch=null) [filters=agent_gu IS NOT NULL, agent_gu LIKE '서울%', groupedBy=] RuntimeFilters: []
+
+
+======================================================================
+=== EXPLAIN FORMATTED (human-readable) ===
+======================================================================
+== Physical Plan ==
+AdaptiveSparkPlan (11)
++- Sort (10)
+   +- Exchange (9)
+      +- Window (8)
+         +- Sort (7)
+            +- Exchange (6)
+               +- HashAggregate (5)
+                  +- Exchange (4)
+                     +- HashAggregate (3)
+                        +- Filter (2)
+                           +- BatchScan nessie.real_estate.apt_trades (1)
+
+
+(1) BatchScan nessie.real_estate.apt_trades
+Output [4]: [deal_year#370, deal_month#371, deal_amount#373, agent_gu#377]
+nessie.real_estate.apt_trades (branch=null) [filters=agent_gu IS NOT NULL, agent_gu LIKE '서울%', groupedBy=]
+
+(2) Filter
+Input [4]: [deal_year#370, deal_month#371, deal_amount#373, agent_gu#377]
+Condition : (isnotnull(agent_gu#377) AND StartsWith(agent_gu#377, 서울))
+
+(3) HashAggregate
+Input [4]: [deal_year#370, deal_month#371, deal_amount#373, agent_gu#377]
+Keys [3]: [agent_gu#377, deal_year#370, deal_month#371]
+Functions [2]: [partial_avg(deal_amount#373), partial_count(1)]
+Aggregate Attributes [3]: [sum#401, count#402L, count#403L]
+Results [6]: [agent_gu#377, deal_year#370, deal_month#371, sum#404, count#405L, count#406L]
+
+(4) Exchange
+Input [6]: [agent_gu#377, deal_year#370, deal_month#371, sum#404, count#405L, count#406L]
+Arguments: hashpartitioning(agent_gu#377, deal_year#370, deal_month#371, 200), ENSURE_REQUIREMENTS, [plan_id=504]
+
+(5) HashAggregate
+Input [6]: [agent_gu#377, deal_year#370, deal_month#371, sum#404, count#405L, count#406L]
+Keys [3]: [agent_gu#377, deal_year#370, deal_month#371]
+Functions [2]: [avg(deal_amount#373), count(1)]
+Aggregate Attributes [2]: [avg(deal_amount#373)#383, count(1)#384L]
+Results [5]: [agent_gu#377, deal_year#370, deal_month#371, avg(deal_amount#373)#383 AS avg_amount#364, count(1)#384L AS trade_count#365L]
+
+(6) Exchange
+Input [5]: [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L]
+Arguments: hashpartitioning(agent_gu#377, 200), ENSURE_REQUIREMENTS, [plan_id=507]
+
+(7) Sort
+Input [5]: [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L]
+Arguments: [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], false, 0
+
+(8) Window
+Input [5]: [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L]
+Arguments: [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST]
+
+(9) Exchange
+Input [6]: [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L, moving_avg_6m#363]
+Arguments: rangepartitioning(agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=511]
+
+(10) Sort
+Input [6]: [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L, moving_avg_6m#363]
+Arguments: [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true, 0
+
+(11) AdaptiveSparkPlan
+Output [6]: [agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L, moving_avg_6m#363]
+Arguments: isFinalPlan=false
+
+
+
+======================================================================
+=== EXPLAIN COST (with statistics) ===
+======================================================================
+== Optimized Logical Plan ==
+Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true, Statistics(sizeInBytes=24.4 MiB)
++- Window [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], Statistics(sizeInBytes=24.4 MiB)
+   +- Aggregate [agent_gu#377, deal_year#370, deal_month#371], [agent_gu#377, deal_year#370, deal_month#371, avg(deal_amount#373) AS avg_amount#364, count(1) AS trade_count#365L], Statistics(sizeInBytes=21.1 MiB)
+      +- Filter (isnotnull(agent_gu#377) AND StartsWith(agent_gu#377, 서울)), Statistics(sizeInBytes=16.2 MiB)
+         +- RelationV2[deal_year#370, deal_month#371, deal_amount#373, agent_gu#377] nessie.real_estate.apt_trades, Statistics(sizeInBytes=16.2 MiB, rowCount=5.32E+5)
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], true, 0
+   +- Exchange rangepartitioning(agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, 200), ENSURE_REQUIREMENTS, [plan_id=511]
+      +- Window [avg(avg_amount#364) windowspecdefinition(agent_gu#377, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST, specifiedwindowframe(RowFrame, -5, currentrow$())) AS moving_avg_6m#363], [agent_gu#377], [deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST]
+         +- Sort [agent_gu#377 ASC NULLS FIRST, deal_year#370 ASC NULLS FIRST, deal_month#371 ASC NULLS FIRST], false, 0
+            +- Exchange hashpartitioning(agent_gu#377, 200), ENSURE_REQUIREMENTS, [plan_id=507]
+               +- HashAggregate(keys=[agent_gu#377, deal_year#370, deal_month#371], functions=[avg(deal_amount#373), count(1)], output=[agent_gu#377, deal_year#370, deal_month#371, avg_amount#364, trade_count#365L])
+                  +- Exchange hashpartitioning(agent_gu#377, deal_year#370, deal_month#371, 200), ENSURE_REQUIREMENTS, [plan_id=504]
+                     +- HashAggregate(keys=[agent_gu#377, deal_year#370, deal_month#371], functions=[partial_avg(deal_amount#373), partial_count(1)], output=[agent_gu#377, deal_year#370, deal_month#371, sum#404, count#405L, count#406L])
+                        +- Filter (isnotnull(agent_gu#377) AND StartsWith(agent_gu#377, 서울))
+                           +- BatchScan nessie.real_estate.apt_trades[deal_year#370, deal_month#371, deal_amount#373, agent_gu#377] nessie.real_estate.apt_trades (branch=null) [filters=agent_gu IS NOT NULL, agent_gu LIKE '서울%', groupedBy=] RuntimeFilters: []
+
+
+

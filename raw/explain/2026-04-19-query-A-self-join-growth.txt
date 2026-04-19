@@ -1,0 +1,252 @@
+=== Query: query-A-self-join-growth ===
+=== Spark version: 3.5.3 ===
+=== Captured: 2026-04-19 ===
+=== Application ID: local-1776575126027 ===
+=== AQE enabled: true ===
+=== Shuffle partitions: 200 ===
+=== autoBroadcastJoinThreshold: 10485760b ===
+=== preferSortMergeJoin: true ===
+=== shuffle.hashJoinFactor: not set ===
+
+======================================================================
+=== 01 PARSED (Unresolved Logical Plan) ===
+======================================================================
+'GlobalLimit 20
++- 'LocalLimit 20
+   +- 'Sort ['growth_pct DESC NULLS LAST], true
+      +- 'UnresolvedHaving (('COUNT('curr.apt_seq) >= 5) AND ('AVG('prev.deal_amount) > 0))
+         +- 'Aggregate ['curr.agent_gu, 'curr.legal_dong], ['curr.agent_gu, 'curr.legal_dong, 'COUNT('curr.apt_seq) AS trades_2024#182, 'ROUND('AVG('curr.deal_amount), 0) AS avg_2024#183, 'ROUND('AVG('prev.deal_amount), 0) AS avg_2023#184, 'ROUND(((('AVG('curr.deal_amount) - 'AVG('prev.deal_amount)) / 'AVG('prev.deal_amount)) * 100), 2) AS growth_pct#185]
+            +- 'Filter ((('curr.deal_year = 2024) AND ('prev.deal_year = 2023)) AND 'curr.agent_gu LIKE 서울%)
+               +- 'Join Inner, ('curr.legal_dong = 'prev.legal_dong)
+                  :- 'SubqueryAlias curr
+                  :  +- 'UnresolvedRelation [nessie, real_estate, apt_trades], [], false
+                  +- 'SubqueryAlias prev
+                     +- 'UnresolvedRelation [nessie, real_estate, apt_trades], [], false
+
+
+======================================================================
+=== 02 ANALYZED (Analyzed Logical Plan) ===
+======================================================================
+GlobalLimit 20
++- LocalLimit 20
+   +- Sort [growth_pct#185 DESC NULLS LAST], true
+      +- Project [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+         +- Filter ((trades_2024#182L >= cast(5 as bigint)) AND (avg(deal_amount#210)#238 > cast(0 as double)))
+            +- Aggregate [agent_gu#197, legal_dong#196], [agent_gu#197, legal_dong#196, count(apt_seq#188) AS trades_2024#182L, round(avg(deal_amount#193), 0) AS avg_2024#183, round(avg(deal_amount#210), 0) AS avg_2023#184, round((((avg(deal_amount#193) - avg(deal_amount#210)) / avg(deal_amount#210)) * cast(100 as double)), 2) AS growth_pct#185, avg(deal_amount#210) AS avg(deal_amount#210)#238]
+               +- Filter (((deal_year#190 = 2024) AND (deal_year#207 = 2023)) AND agent_gu#197 LIKE 서울%)
+                  +- Join Inner, (legal_dong#196 = legal_dong#213)
+                     :- SubqueryAlias curr
+                     :  +- SubqueryAlias nessie.real_estate.apt_trades
+                     :     +- RelationV2[apt_name#186, apt_dong#187, apt_seq#188, build_year#189, deal_year#190, deal_month#191, deal_day#192, deal_amount#193, area_sqm#194, floor#195, legal_dong#196, agent_gu#197, deal_type#198, buyer_type#199, seller_type#200, registration_date#201, deal_date#202] nessie.real_estate.apt_trades nessie.real_estate.apt_trades
+                     +- SubqueryAlias prev
+                        +- SubqueryAlias nessie.real_estate.apt_trades
+                           +- RelationV2[apt_name#203, apt_dong#204, apt_seq#205, build_year#206, deal_year#207, deal_month#208, deal_day#209, deal_amount#210, area_sqm#211, floor#212, legal_dong#213, agent_gu#214, deal_type#215, buyer_type#216, seller_type#217, registration_date#218, deal_date#219] nessie.real_estate.apt_trades nessie.real_estate.apt_trades
+
+
+======================================================================
+=== 03 OPTIMIZED (Optimized Logical Plan) ===
+======================================================================
+GlobalLimit 20
++- LocalLimit 20
+   +- Sort [growth_pct#185 DESC NULLS LAST], true
+      +- Project [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+         +- Filter (isnotnull(avg(deal_amount#210)#238) AND ((trades_2024#182L >= 5) AND (avg(deal_amount#210)#238 > 0.0)))
+            +- Aggregate [agent_gu#197, legal_dong#196], [agent_gu#197, legal_dong#196, count(apt_seq#188) AS trades_2024#182L, round(avg(deal_amount#193), 0) AS avg_2024#183, round(avg(deal_amount#210), 0) AS avg_2023#184, round((((avg(deal_amount#193) - avg(deal_amount#210)) / avg(deal_amount#210)) * 100.0), 2) AS growth_pct#185, avg(deal_amount#210) AS avg(deal_amount#210)#238]
+               +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210]
+                  +- Join Inner, (legal_dong#196 = legal_dong#213)
+                     :- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+                     :  +- Filter ((((isnotnull(deal_year#190) AND isnotnull(agent_gu#197)) AND (deal_year#190 = 2024)) AND StartsWith(agent_gu#197, 서울)) AND isnotnull(legal_dong#196))
+                     :     +- RelationV2[apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197] nessie.real_estate.apt_trades
+                     +- Project [deal_amount#210, legal_dong#213]
+                        +- Filter ((isnotnull(deal_year#207) AND (deal_year#207 = 2023)) AND isnotnull(legal_dong#213))
+                           +- RelationV2[deal_year#207, deal_amount#210, legal_dong#213] nessie.real_estate.apt_trades
+
+
+======================================================================
+=== 04 PHYSICAL (Spark Plan, pre-AQE) ===
+======================================================================
+TakeOrderedAndProject(limit=20, orderBy=[growth_pct#185 DESC NULLS LAST], output=[agent_gu#197,legal_dong#196,trades_2024#182L,avg_2024#183,avg_2023#184,growth_pct#185])
++- Project [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+   +- Filter (isnotnull(avg(deal_amount#210)#238) AND ((trades_2024#182L >= 5) AND (avg(deal_amount#210)#238 > 0.0)))
+      +- HashAggregate(keys=[agent_gu#197, legal_dong#196], functions=[count(apt_seq#188), avg(deal_amount#193), avg(deal_amount#210)], output=[agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185, avg(deal_amount#210)#238])
+         +- HashAggregate(keys=[agent_gu#197, legal_dong#196], functions=[partial_count(apt_seq#188), partial_avg(deal_amount#193), partial_avg(deal_amount#210)], output=[agent_gu#197, legal_dong#196, count#258L, sum#259, count#260L, sum#261, count#262L])
+            +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210]
+               +- SortMergeJoin [legal_dong#196], [legal_dong#213], Inner
+                  :- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+                  :  +- Filter ((((isnotnull(deal_year#190) AND isnotnull(agent_gu#197)) AND (deal_year#190 = 2024)) AND StartsWith(agent_gu#197, 서울)) AND isnotnull(legal_dong#196))
+                  :     +- BatchScan nessie.real_estate.apt_trades[apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', legal_dong IS NOT NULL, groupedBy=] RuntimeFilters: []
+                  +- Project [deal_amount#210, legal_dong#213]
+                     +- Filter ((isnotnull(deal_year#207) AND (deal_year#207 = 2023)) AND isnotnull(legal_dong#213))
+                        +- BatchScan nessie.real_estate.apt_trades[deal_year#207, deal_amount#210, legal_dong#213] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, deal_year = 2023, legal_dong IS NOT NULL, groupedBy=] RuntimeFilters: []
+
+
+======================================================================
+=== 04+AQE EXECUTED (Final Executed Plan) ===
+======================================================================
+AdaptiveSparkPlan isFinalPlan=false
++- TakeOrderedAndProject(limit=20, orderBy=[growth_pct#185 DESC NULLS LAST], output=[agent_gu#197,legal_dong#196,trades_2024#182L,avg_2024#183,avg_2023#184,growth_pct#185])
+   +- Project [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+      +- Filter (isnotnull(avg(deal_amount#210)#238) AND ((trades_2024#182L >= 5) AND (avg(deal_amount#210)#238 > 0.0)))
+         +- HashAggregate(keys=[agent_gu#197, legal_dong#196], functions=[count(apt_seq#188), avg(deal_amount#193), avg(deal_amount#210)], output=[agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185, avg(deal_amount#210)#238])
+            +- HashAggregate(keys=[agent_gu#197, legal_dong#196], functions=[partial_count(apt_seq#188), partial_avg(deal_amount#193), partial_avg(deal_amount#210)], output=[agent_gu#197, legal_dong#196, count#258L, sum#259, count#260L, sum#261, count#262L])
+               +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210]
+                  +- SortMergeJoin [legal_dong#196], [legal_dong#213], Inner
+                     :- Sort [legal_dong#196 ASC NULLS FIRST], false, 0
+                     :  +- Exchange hashpartitioning(legal_dong#196, 200), ENSURE_REQUIREMENTS, [plan_id=100]
+                     :     +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+                     :        +- Filter ((((isnotnull(deal_year#190) AND isnotnull(agent_gu#197)) AND (deal_year#190 = 2024)) AND StartsWith(agent_gu#197, 서울)) AND isnotnull(legal_dong#196))
+                     :           +- BatchScan nessie.real_estate.apt_trades[apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', legal_dong IS NOT NULL, groupedBy=] RuntimeFilters: []
+                     +- Sort [legal_dong#213 ASC NULLS FIRST], false, 0
+                        +- Exchange hashpartitioning(legal_dong#213, 200), ENSURE_REQUIREMENTS, [plan_id=101]
+                           +- Project [deal_amount#210, legal_dong#213]
+                              +- Filter ((isnotnull(deal_year#207) AND (deal_year#207 = 2023)) AND isnotnull(legal_dong#213))
+                                 +- BatchScan nessie.real_estate.apt_trades[deal_year#207, deal_amount#210, legal_dong#213] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, deal_year = 2023, legal_dong IS NOT NULL, groupedBy=] RuntimeFilters: []
+
+
+======================================================================
+=== EXPLAIN FORMATTED (human-readable) ===
+======================================================================
+== Physical Plan ==
+AdaptiveSparkPlan (18)
++- TakeOrderedAndProject (17)
+   +- Project (16)
+      +- Filter (15)
+         +- HashAggregate (14)
+            +- HashAggregate (13)
+               +- Project (12)
+                  +- SortMergeJoin Inner (11)
+                     :- Sort (5)
+                     :  +- Exchange (4)
+                     :     +- Project (3)
+                     :        +- Filter (2)
+                     :           +- BatchScan nessie.real_estate.apt_trades (1)
+                     +- Sort (10)
+                        +- Exchange (9)
+                           +- Project (8)
+                              +- Filter (7)
+                                 +- BatchScan nessie.real_estate.apt_trades (6)
+
+
+(1) BatchScan nessie.real_estate.apt_trades
+Output [5]: [apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197]
+nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', legal_dong IS NOT NULL, groupedBy=]
+
+(2) Filter
+Input [5]: [apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197]
+Condition : ((((isnotnull(deal_year#190) AND isnotnull(agent_gu#197)) AND (deal_year#190 = 2024)) AND StartsWith(agent_gu#197, 서울)) AND isnotnull(legal_dong#196))
+
+(3) Project
+Output [4]: [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+Input [5]: [apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197]
+
+(4) Exchange
+Input [4]: [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+Arguments: hashpartitioning(legal_dong#196, 200), ENSURE_REQUIREMENTS, [plan_id=100]
+
+(5) Sort
+Input [4]: [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+Arguments: [legal_dong#196 ASC NULLS FIRST], false, 0
+
+(6) BatchScan nessie.real_estate.apt_trades
+Output [3]: [deal_year#207, deal_amount#210, legal_dong#213]
+nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, deal_year = 2023, legal_dong IS NOT NULL, groupedBy=]
+
+(7) Filter
+Input [3]: [deal_year#207, deal_amount#210, legal_dong#213]
+Condition : ((isnotnull(deal_year#207) AND (deal_year#207 = 2023)) AND isnotnull(legal_dong#213))
+
+(8) Project
+Output [2]: [deal_amount#210, legal_dong#213]
+Input [3]: [deal_year#207, deal_amount#210, legal_dong#213]
+
+(9) Exchange
+Input [2]: [deal_amount#210, legal_dong#213]
+Arguments: hashpartitioning(legal_dong#213, 200), ENSURE_REQUIREMENTS, [plan_id=101]
+
+(10) Sort
+Input [2]: [deal_amount#210, legal_dong#213]
+Arguments: [legal_dong#213 ASC NULLS FIRST], false, 0
+
+(11) SortMergeJoin
+Left keys [1]: [legal_dong#196]
+Right keys [1]: [legal_dong#213]
+Join type: Inner
+Join condition: None
+
+(12) Project
+Output [5]: [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210]
+Input [6]: [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210, legal_dong#213]
+
+(13) HashAggregate
+Input [5]: [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210]
+Keys [2]: [agent_gu#197, legal_dong#196]
+Functions [3]: [partial_count(apt_seq#188), partial_avg(deal_amount#193), partial_avg(deal_amount#210)]
+Aggregate Attributes [5]: [count#253L, sum#254, count#255L, sum#256, count#257L]
+Results [7]: [agent_gu#197, legal_dong#196, count#258L, sum#259, count#260L, sum#261, count#262L]
+
+(14) HashAggregate
+Input [7]: [agent_gu#197, legal_dong#196, count#258L, sum#259, count#260L, sum#261, count#262L]
+Keys [2]: [agent_gu#197, legal_dong#196]
+Functions [3]: [count(apt_seq#188), avg(deal_amount#193), avg(deal_amount#210)]
+Aggregate Attributes [3]: [count(apt_seq#188)#220L, avg(deal_amount#193)#221, avg(deal_amount#210)#222]
+Results [7]: [agent_gu#197, legal_dong#196, count(apt_seq#188)#220L AS trades_2024#182L, round(avg(deal_amount#193)#221, 0) AS avg_2024#183, round(avg(deal_amount#210)#222, 0) AS avg_2023#184, round((((avg(deal_amount#193)#221 - avg(deal_amount#210)#222) / avg(deal_amount#210)#222) * 100.0), 2) AS growth_pct#185, avg(deal_amount#210)#222 AS avg(deal_amount#210)#238]
+
+(15) Filter
+Input [7]: [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185, avg(deal_amount#210)#238]
+Condition : (isnotnull(avg(deal_amount#210)#238) AND ((trades_2024#182L >= 5) AND (avg(deal_amount#210)#238 > 0.0)))
+
+(16) Project
+Output [6]: [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+Input [7]: [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185, avg(deal_amount#210)#238]
+
+(17) TakeOrderedAndProject
+Input [6]: [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+Arguments: 20, [growth_pct#185 DESC NULLS LAST], [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+
+(18) AdaptiveSparkPlan
+Output [6]: [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+Arguments: isFinalPlan=false
+
+
+
+======================================================================
+=== EXPLAIN COST (with statistics) ===
+======================================================================
+== Optimized Logical Plan ==
+GlobalLimit 20, Statistics(sizeInBytes=1600.0 B, rowCount=20)
++- LocalLimit 20, Statistics(sizeInBytes=344.4 TiB)
+   +- Sort [growth_pct#185 DESC NULLS LAST], true, Statistics(sizeInBytes=344.4 TiB)
+      +- Project [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185], Statistics(sizeInBytes=344.4 TiB)
+         +- Filter (isnotnull(avg(deal_amount#210)#238) AND ((trades_2024#182L >= 5) AND (avg(deal_amount#210)#238 > 0.0))), Statistics(sizeInBytes=378.8 TiB)
+            +- Aggregate [agent_gu#197, legal_dong#196], [agent_gu#197, legal_dong#196, count(apt_seq#188) AS trades_2024#182L, round(avg(deal_amount#193), 0) AS avg_2024#183, round(avg(deal_amount#210), 0) AS avg_2023#184, round((((avg(deal_amount#193) - avg(deal_amount#210)) / avg(deal_amount#210)) * 100.0), 2) AS growth_pct#185, avg(deal_amount#210) AS avg(deal_amount#210)#238], Statistics(sizeInBytes=378.8 TiB)
+               +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210], Statistics(sizeInBytes=327.2 TiB)
+                  +- Join Inner, (legal_dong#196 = legal_dong#213), Statistics(sizeInBytes=413.3 TiB)
+                     :- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197], Statistics(sizeInBytes=32.7 MiB)
+                     :  +- Filter ((((isnotnull(deal_year#190) AND isnotnull(agent_gu#197)) AND (deal_year#190 = 2024)) AND StartsWith(agent_gu#197, 서울)) AND isnotnull(legal_dong#196)), Statistics(sizeInBytes=34.5 MiB)
+                     :     +- RelationV2[apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197] nessie.real_estate.apt_trades, Statistics(sizeInBytes=34.5 MiB, rowCount=5.32E+5)
+                     +- Project [deal_amount#210, legal_dong#213], Statistics(sizeInBytes=12.6 MiB)
+                        +- Filter ((isnotnull(deal_year#207) AND (deal_year#207 = 2023)) AND isnotnull(legal_dong#213)), Statistics(sizeInBytes=14.2 MiB)
+                           +- RelationV2[deal_year#207, deal_amount#210, legal_dong#213] nessie.real_estate.apt_trades, Statistics(sizeInBytes=14.2 MiB, rowCount=5.32E+5)
+
+== Physical Plan ==
+AdaptiveSparkPlan isFinalPlan=false
++- TakeOrderedAndProject(limit=20, orderBy=[growth_pct#185 DESC NULLS LAST], output=[agent_gu#197,legal_dong#196,trades_2024#182L,avg_2024#183,avg_2023#184,growth_pct#185])
+   +- Project [agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185]
+      +- Filter (isnotnull(avg(deal_amount#210)#238) AND ((trades_2024#182L >= 5) AND (avg(deal_amount#210)#238 > 0.0)))
+         +- HashAggregate(keys=[agent_gu#197, legal_dong#196], functions=[count(apt_seq#188), avg(deal_amount#193), avg(deal_amount#210)], output=[agent_gu#197, legal_dong#196, trades_2024#182L, avg_2024#183, avg_2023#184, growth_pct#185, avg(deal_amount#210)#238])
+            +- HashAggregate(keys=[agent_gu#197, legal_dong#196], functions=[partial_count(apt_seq#188), partial_avg(deal_amount#193), partial_avg(deal_amount#210)], output=[agent_gu#197, legal_dong#196, count#258L, sum#259, count#260L, sum#261, count#262L])
+               +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197, deal_amount#210]
+                  +- SortMergeJoin [legal_dong#196], [legal_dong#213], Inner
+                     :- Sort [legal_dong#196 ASC NULLS FIRST], false, 0
+                     :  +- Exchange hashpartitioning(legal_dong#196, 200), ENSURE_REQUIREMENTS, [plan_id=100]
+                     :     +- Project [apt_seq#188, deal_amount#193, legal_dong#196, agent_gu#197]
+                     :        +- Filter ((((isnotnull(deal_year#190) AND isnotnull(agent_gu#197)) AND (deal_year#190 = 2024)) AND StartsWith(agent_gu#197, 서울)) AND isnotnull(legal_dong#196))
+                     :           +- BatchScan nessie.real_estate.apt_trades[apt_seq#188, deal_year#190, deal_amount#193, legal_dong#196, agent_gu#197] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, agent_gu IS NOT NULL, deal_year = 2024, agent_gu LIKE '서울%', legal_dong IS NOT NULL, groupedBy=] RuntimeFilters: []
+                     +- Sort [legal_dong#213 ASC NULLS FIRST], false, 0
+                        +- Exchange hashpartitioning(legal_dong#213, 200), ENSURE_REQUIREMENTS, [plan_id=101]
+                           +- Project [deal_amount#210, legal_dong#213]
+                              +- Filter ((isnotnull(deal_year#207) AND (deal_year#207 = 2023)) AND isnotnull(legal_dong#213))
+                                 +- BatchScan nessie.real_estate.apt_trades[deal_year#207, deal_amount#210, legal_dong#213] nessie.real_estate.apt_trades (branch=null) [filters=deal_year IS NOT NULL, deal_year = 2023, legal_dong IS NOT NULL, groupedBy=] RuntimeFilters: []
+
+
+
