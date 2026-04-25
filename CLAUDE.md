@@ -196,6 +196,14 @@ Lint는 `configs` 항목이 `config-index.md`에 존재하는지 검사합니다
 
 ## 7. 운영 명령
 
+### 7.0 명령 호출 방식 주의
+아래 `/ingest`, `/query`, `/trace`, `/lint`, `/probe`는 이 Wiki 시스템의
+운영 명령이며 Claude Code의 내장 slash command가 아니다. 프롬프트 첫
+줄에 `/trace ...`처럼 쓰면 Claude Code가 "Unknown command"로 거부한다.
+호출 시에는 "CLAUDE.md의 trace 명령을 실행" 또는 "이 쿼리를 trace
+해주세요" 같은 평서문으로 쓰거나, 문장 두 번째 단어 이후에 명령어를
+배치한다.
+
 ### 7.1 `/ingest <source-path>`
 사용자가 `raw/` 파일을 가리킬 때:
 
