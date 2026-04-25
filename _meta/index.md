@@ -22,7 +22,9 @@ _비어 있음._
 
 ## 04 — Physical Planning
 
-- [wiki/04-physical-planning/join-strategy-hints.md](../wiki/04-physical-planning/join-strategy-hints.md) — BROADCAST/MERGE/SHUFFLE_HASH/SHUFFLE_REPLICATE_NL hints + auto-broadcast threshold.
+- [wiki/04-physical-planning/join-strategy-hints.md](../wiki/04-physical-planning/join-strategy-hints.md) — BROADCAST/MERGE/SHUFFLE_HASH/SHUFFLE_REPLICATE_NL hints + auto-broadcast threshold (verified, JoinSelection 소스).
+- [wiki/04-physical-planning/ensure-requirements.md](../wiki/04-physical-planning/ensure-requirements.md) — Exchange/Sort 자동 삽입 rule. 4 메커니즘 (단일 자식 distribution check / multi-child co-partitioning / ordering check / reorderJoinKeys). 세 case의 7개 Exchange를 메커니즘별로 매핑 (verified, EnsureRequirements.scala 소스).
+- [wiki/04-physical-planning/partitioning-compatibility.md](../wiki/04-physical-planning/partitioning-compatibility.md) — `Partitioning.satisfies(Distribution)` 호환성 매트릭스 (Distribution 6종 × Partitioning 6종, 36 셀 라인 인용). HashPartitioningLike의 subset/superset 분기 + RangePartitioning prefix 매칭 + 쿼리 C "structural 한계" 일반화 (verified, partitioning.scala 소스).
 - [wiki/04-physical-planning/coalesce-repartition-hints.md](../wiki/04-physical-planning/coalesce-repartition-hints.md) — COALESCE/REPARTITION/REPARTITION_BY_RANGE/REBALANCE + shuffle/file partition configs.
 - [wiki/04-physical-planning/storage-partition-join.md](../wiki/04-physical-planning/storage-partition-join.md) — V2 DataSource partitioning으로 Exchange 제거.
 - [wiki/04-physical-planning/hash-aggregate-partial-final.md](../wiki/04-physical-planning/hash-aggregate-partial-final.md) — GROUP BY의 partial → final 2단계 HashAggregate 패턴 (tentative).

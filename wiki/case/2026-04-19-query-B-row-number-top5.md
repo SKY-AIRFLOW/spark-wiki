@@ -13,6 +13,8 @@ related:
   - 03-logical-optimization/predicate-pushdown.md
   - 04-physical-planning/window-exec.md
   - 04-physical-planning/window-group-limit.md
+  - 04-physical-planning/ensure-requirements.md
+  - 04-physical-planning/partitioning-compatibility.md
   - 04-physical-planning/hash-aggregate-partial-final.md
   - 04-physical-planning/batch-scan-iceberg.md
   - 05-cost-and-aqe/aqe-overview.md
@@ -135,7 +137,7 @@ Java 개발자 관점: 두 경로 모두 `PriorityQueue` (또는
 | 01 Parsing | `'UnresolvedRelation` 1회 + `'Project` (`ROW_NUMBER()` windowspecdefinition) + `'Filter (price_rank <= 5)` + outer `'Sort`. | (skeleton 대기) |
 | 02 Analysis | RelationV2 17 컬럼 스키마, 각 컬럼 exprId 부여. ROW_NUMBER()가 `Window` 논리 노드로 해결되고 `unspecifiedframe` → `specifiedwindowframe(RowFrame, unboundedpreceding, currentrow)`로 확정. | [02/analyzer-overview.md](../02-analysis/analyzer-overview.md) |
 | 03 Logical Optimization | Column pruning (17→6), predicate pushdown (WHERE → 아래로 + `LIKE → StartsWith` + `IS NOT NULL`), **`InsertWindowGroupLimit` 규칙 발동**: `Filter(price_rank ≤ 5) over Window(row_number())` 패턴 인식 → Window 아래에 `logical.WindowGroupLimit(..., 5)` 삽입. `Filter`와 `Window`는 의미 보존을 위해 유지. | [03/predicate-pushdown.md](../03-logical-optimization/predicate-pushdown.md) |
-| 04 Physical Planning | `Window` strategy가 `WindowExec` 생성 (SparkStrategies.scala:641-655). `WindowGroupLimit` strategy가 **단일 논리 노드를 Partial + Final 두 물리 노드로 분할** (SparkStrategies.scala:657-667). `EnsureRequirements`가 Final 위에 `Exchange hashpartitioning(agent_gu, 200)` + Sort 배치, outer ORDER BY용 `Exchange rangepartitioning` + Sort 배치. | [04/window-exec.md](../04-physical-planning/window-exec.md), [04/window-group-limit.md](../04-physical-planning/window-group-limit.md), [04/hash-aggregate-partial-final.md](../04-physical-planning/hash-aggregate-partial-final.md) (교차 패턴), [04/batch-scan-iceberg.md](../04-physical-planning/batch-scan-iceberg.md) |
+| 04 Physical Planning | `Window` strategy가 `WindowExec` 생성 (SparkStrategies.scala:641-655). `WindowGroupLimit` strategy가 **단일 논리 노드를 Partial + Final 두 물리 노드로 분할** (SparkStrategies.scala:657-667). `EnsureRequirements`(line 71-80)가 Final 위에 `Exchange hashpartitioning(agent_gu, 200)` + Sort 배치, outer ORDER BY는 `OrderedDistribution.createPartitioning`을 통해 `Exchange rangepartitioning` + Sort로 배치. RangePartitioning ↔ OrderedDistribution prefix 매칭은 [04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md) 박스 ② (`partitioning.scala:449-467`). | [04/window-exec.md](../04-physical-planning/window-exec.md), [04/window-group-limit.md](../04-physical-planning/window-group-limit.md), [04/ensure-requirements.md](../04-physical-planning/ensure-requirements.md), [04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md), [04/hash-aggregate-partial-final.md](../04-physical-planning/hash-aggregate-partial-final.md) (교차 패턴), [04/batch-scan-iceberg.md](../04-physical-planning/batch-scan-iceberg.md) |
 | 05 Cost & AQE | `AdaptiveSparkPlan isFinalPlan=false`. EXPLAIN COST는 30.5 MiB 전후 — 쿼리 A 같은 fallback 폭발 없음. | [05/aqe-overview.md](../05-cost-and-aqe/aqe-overview.md) |
 | 06 Codegen | 추측 금지. fused 가능 구역 추정만. | (별도 trace) |
 | 07 RDD & Stages | Exchange 2개 → shuffle map stage 2개 + 중간 처리 stage. 정확한 stage 개수는 Spark UI 권장. | (Exchange 기반 추정) |
@@ -454,7 +456,15 @@ Pre-AQE plan에는 Exchange가 보이지 않지만 executed plan에는 있다 (`
 `WindowGroupLimitExec(mode=Final)`이 요구하는 distribution
 (`ClusteredDistribution(partitionSpec)`)과 ordering
 (`partitionSpec ASC :: orderSpec`)을 만족시키려고 `EnsureRequirements` rule
-(단계 04의 또 다른 phase)이 자동 삽입한다.
+(단계 04의 또 다른 phase)이 자동 삽입한다. 정확한 진입은
+[04/ensure-requirements.md](../04-physical-planning/ensure-requirements.md)의
+**단일 자식 distribution check** 분기 (`EnsureRequirements.scala:71-80`) +
+ordering check 분기 (`:207-215`). Partial 자식의 `outputPartitioning`은
+`UnknownPartitioning`이라
+[04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md)
+매트릭스의 default trait fallback (`partitioning.scala:241-245`)에서 false
+반환 → `distribution.createPartitioning(200)`으로 새 `HashPartitioning(agent_gu, 200)`
+생성 + `ShuffleExchange`로 감싸기.
 
 Java 관점: `List` 이터레이션 전에 `list.sort()`를 반드시 수행하는 것과 같은
 **invariant 강제**. 소비자가 전제하는 조건을 만족시키기 위해 삽입되는
@@ -476,6 +486,18 @@ outer `ORDER BY agent_gu ASC, price_rank ASC` 때문에 삽입됨. **Global sort
   partition 0: `[agent_gu ≤ k0]`, partition 1: `[k0 < agent_gu ≤ k1]`, ... .
 - 각 partition 내부를 sort하면 모든 partition을 concat해 읽는 것만으로
   전체 정렬.
+
+`Sort(global=true)`가 요구하는 `OrderedDistribution(agent_gu ASC, price_rank ASC)`
+은 자식의 `outputPartitioning`이 만족하는 partitioning을 가지고 있지 않으므로
+[04/ensure-requirements.md](../04-physical-planning/ensure-requirements.md)의
+단일 자식 분기 (`:71-80`)에서 false → `OrderedDistribution.createPartitioning`
+(`partitioning.scala:181-183`)이 `RangePartitioning(ordering, 200)`을 새로
+생성해 `ShuffleExchange`로 감싼다. 만약 자식이 이미 `RangePartitioning(agent_gu)`
+이었다면
+[04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md)
+박스 ②의 prefix 매칭 (`partitioning.scala:449-467`)에 의해 Exchange 없이 통과
+가능했을 것이다 — 본 case는 그 호환성이 사용되는 사례가 아니라 신규 생성
+사례.
 
 Java 관점: `TreeMap<agent_gu, List<Row>>`를 200개 bucket으로 쪼개되 **key
 범위를 연속적으로 분할**한 것. Spark는 샘플링을 통해 quantile을 추정하고

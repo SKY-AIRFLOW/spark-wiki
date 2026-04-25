@@ -13,6 +13,8 @@ related:
   - 02-analysis/analyzer-overview.md
   - 03-logical-optimization/predicate-pushdown.md
   - 04-physical-planning/join-strategy-hints.md
+  - 04-physical-planning/ensure-requirements.md
+  - 04-physical-planning/partitioning-compatibility.md
   - 04-physical-planning/hash-aggregate-partial-final.md
   - 04-physical-planning/batch-scan-iceberg.md
   - 05-cost-and-aqe/aqe-overview.md
@@ -81,7 +83,7 @@ LIMIT 20
 | 01 Parsing | SQL 텍스트 → `'UnresolvedRelation [nessie, real_estate, apt_trades]` 2회(curr/prev) + `'Aggregate` + `'UnresolvedHaving` + `'Sort` + `'Limit` 트리. | (skeleton 대기) |
 | 02 Analysis | 양쪽 `UnresolvedRelation` → 같은 `RelationV2` (17 컬럼 스키마). 각 컬럼에 별도 `exprId` 부여 (`legal_dong#196` vs `#213`). `UnresolvedHaving` → `Filter` 위치 확정. | [02-analysis/analyzer-overview.md](../02-analysis/analyzer-overview.md) |
 | 03 Logical Optimization | Column pruning (17→5/3), predicate pushdown (WHERE를 Join 양쪽 child로 분배 + `IS NOT NULL` 추론), `LIKE '서울%'` → `StartsWith`, `cast` constant folding. | [03-logical-optimization/predicate-pushdown.md](../03-logical-optimization/predicate-pushdown.md) |
-| 04 Physical Planning | **SortMergeJoin** (두 side 모두 broadcastable 미만 아님, preferSMJ=true, equi-join). **HashAggregate partial → final 2단계**. **TakeOrderedAndProject** (LIMIT+ORDER BY fused). **BatchScan** 2회 (Iceberg V2). | [04/join-strategy-hints.md](../04-physical-planning/join-strategy-hints.md), [04/hash-aggregate-partial-final.md](../04-physical-planning/hash-aggregate-partial-final.md), [04/batch-scan-iceberg.md](../04-physical-planning/batch-scan-iceberg.md) |
+| 04 Physical Planning | **SortMergeJoin** (두 side 모두 broadcastable 미만 아님, preferSMJ=true, equi-join). **HashAggregate partial → final 2단계**. **TakeOrderedAndProject** (LIMIT+ORDER BY fused). **BatchScan** 2회 (Iceberg V2). SMJ 양쪽 `Exchange hashpartitioning(legal_dong, 200)`은 `EnsureRequirements`의 **multi-child co-partitioning 경로**(line 99-205) — 양쪽 자식 모두 partitioning을 자체 생성 못 해 양쪽 모두 ShuffleExchange 삽입. | [04/join-strategy-hints.md](../04-physical-planning/join-strategy-hints.md), [04/ensure-requirements.md](../04-physical-planning/ensure-requirements.md), [04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md), [04/hash-aggregate-partial-final.md](../04-physical-planning/hash-aggregate-partial-final.md), [04/batch-scan-iceberg.md](../04-physical-planning/batch-scan-iceberg.md) |
 | 05 Cost & AQE | `AdaptiveSparkPlan isFinalPlan=false` 래퍼만 존재 — 이 캡처는 `.explain()` 시점 plan이라 **AQE 런타임 결정이 아직 적용 전**. EXPLAIN COST는 상세 통계 제공 (아래 05 참고). | [05-cost-and-aqe/aqe-overview.md](../05-cost-and-aqe/aqe-overview.md) |
 | 06 Codegen | Plan 파일에는 codegen 출력 미포함. fused 가능 구역 추정만 기록. 생성 Java 관찰은 후속 `debug.codegen()` trace로 분리. | (별도 trace) |
 | 07 RDD & Stages | Exchange 2개 → shuffle map stage 2개, SMJ+partial HashAggregate 실행 stage, final HashAggregate + TakeOrderedAndProject 마무리 stage. 정확한 stage 개수는 Spark UI 권장. | (Exchange 기반 추정) |
@@ -401,7 +403,14 @@ ENSURE_REQUIREMENTS, [plan_id=100|101]`이 추가된다.
   `ENSURE_REQUIREMENTS`는 "이 exchange는 자식 연산자가 요구하는
   distribution을 만족시키기 위해 삽입됨"을 의미 — Spark가 자동
   삽입했다는 표식. 사용자가 `repartition`을 쓴 경우 `REPARTITION_BY_COL`
-  같은 다른 마커가 붙는다.
+  같은 다른 마커가 붙는다. 이 두 Exchange가 삽입된 정확한 경로는
+  [04/ensure-requirements.md](../04-physical-planning/ensure-requirements.md)의
+  **multi-child co-partitioning 분기**(`EnsureRequirements.scala:99-205`)
+  — SMJ가 양쪽 자식에 `ClusteredDistribution([legal_dong])`을 요구하지만
+  양쪽 자식 모두 `BatchScan`의 `UnknownPartitioning` 출력 상태라 어느 한
+  쪽 spec을 채택할 후보(`canCreatePartitioning=true`)가 없어 양쪽 모두
+  `ShuffleExchange`가 삽입된다. `reorderJoinKeys`(`:264-326`)는 이 케이스
+  에서는 미발동 (key가 단일).
 - **`plan_id=100`, `plan_id=101`**: 두 Exchange의 고유 식별자.
   AQE는 stage 경계를 이 plan_id로 추적해 어느 ShuffleQueryStage가
   어느 Exchange에 대응되는지 매핑한다. Java에서 `System.identityHashCode`

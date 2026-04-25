@@ -14,15 +14,17 @@
 | `spark.sql.files.maxPartitionNum` | None | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `spark.sql.files.minPartitionNum` | Default Parallelism | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `spark.sql.files.openCostInBytes` | 4194304 (4 MB) | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
+| `spark.sql.maxSinglePartitionBytes` | 128 MB (verify) | 04 | [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
 | `spark.sql.requireAllClusterKeysForCoPartition` | true | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
-| `spark.sql.shuffle.partitions` | 200 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
+| `spark.sql.requireAllClusterKeysForDistribution` | false | 04 | [partitioning-compatibility](../../wiki/04-physical-planning/partitioning-compatibility.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
+| `spark.sql.shuffle.partitions` | 200 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
 | `spark.sql.sources.parallelPartitionDiscovery.parallelism` | 10000 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `spark.sql.sources.parallelPartitionDiscovery.threshold` | 32 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `spark.sql.sources.v2.bucketing.allowCompatibleTransforms.enabled` | false | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
 | `spark.sql.sources.v2.bucketing.allowJoinKeysSubsetOfPartitionKeys.enabled` | false | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
-| `spark.sql.sources.v2.bucketing.enabled` | true | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
-| `spark.sql.sources.v2.bucketing.partiallyClusteredDistribution.enabled` | false | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
-| `spark.sql.sources.v2.bucketing.pushPartValues.enabled` | true | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
+| `spark.sql.sources.v2.bucketing.enabled` | true | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
+| `spark.sql.sources.v2.bucketing.partiallyClusteredDistribution.enabled` | false | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
+| `spark.sql.sources.v2.bucketing.pushPartValues.enabled` | true | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
 | `spark.sql.sources.v2.bucketing.shuffle.enabled` | false | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
 | `spark.sql.adaptive.advisoryPartitionSizeInBytes` | 64 MB | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
 | `spark.sql.adaptive.autoBroadcastJoinThreshold` | (matches `spark.sql.autoBroadcastJoinThreshold`) | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
