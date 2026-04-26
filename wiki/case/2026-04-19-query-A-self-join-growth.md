@@ -11,6 +11,9 @@ confidence: verified
 related:
   - 00-overview/execution-pipeline.md
   - 02-analysis/analyzer-overview.md
+  - 03-logical-optimization/column-pruning.md
+  - 03-logical-optimization/infer-filters-from-constraints.md
+  - 03-logical-optimization/like-simplification.md
   - 03-logical-optimization/predicate-pushdown.md
   - 04-physical-planning/join-strategy-hints.md
   - 04-physical-planning/ensure-requirements.md

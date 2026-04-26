@@ -10,6 +10,10 @@ confidence: verified
 related:
   - 00-overview/execution-pipeline.md
   - 02-analysis/analyzer-overview.md
+  - 03-logical-optimization/column-pruning.md
+  - 03-logical-optimization/infer-filters-from-constraints.md
+  - 03-logical-optimization/infer-window-group-limit.md
+  - 03-logical-optimization/like-simplification.md
   - 03-logical-optimization/predicate-pushdown.md
   - 04-physical-planning/window-exec.md
   - 04-physical-planning/window-group-limit.md
@@ -56,9 +60,10 @@ ORDER BY agent_gu ASC, price_rank ASC
   — 이 쿼리가 의존하는 `Window` strategy (641-655)와 `WindowGroupLimit`
   strategy (657-667)는 3.5 시리즈에서 구조 변경이 알려진 바 없어 동일
   추정.
-- **`InsertWindowGroupLimit`** (Catalyst rule)는 어제 ingest 범위 밖 —
-  이 규칙이 적용됐다는 사실은 plan 관찰로 확정, 규칙 내부 동작은
-  잠정 기술.
+- **`InferWindowGroupLimit`** (Catalyst rule)는 2026-04-26 ingest 사이클로
+  verified 페이지 작성 완료 —
+  [03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md).
+  실제 클래스명은 `InferWindowGroupLimit` (Insert가 아닌 Infer).
 - Iceberg: `iceberg-spark-runtime-3.5_2.12:1.7.1` (쿼리 A와 동일).
 
 ## 캡처 환경 설정 (쿼리 A와 동일)
@@ -136,7 +141,7 @@ Java 개발자 관점: 두 경로 모두 `PriorityQueue` (또는
 |---|---|---|
 | 01 Parsing | `'UnresolvedRelation` 1회 + `'Project` (`ROW_NUMBER()` windowspecdefinition) + `'Filter (price_rank <= 5)` + outer `'Sort`. | (skeleton 대기) |
 | 02 Analysis | RelationV2 17 컬럼 스키마, 각 컬럼 exprId 부여. ROW_NUMBER()가 `Window` 논리 노드로 해결되고 `unspecifiedframe` → `specifiedwindowframe(RowFrame, unboundedpreceding, currentrow)`로 확정. | [02/analyzer-overview.md](../02-analysis/analyzer-overview.md) |
-| 03 Logical Optimization | Column pruning (17→6), predicate pushdown (WHERE → 아래로 + `LIKE → StartsWith` + `IS NOT NULL`), **`InsertWindowGroupLimit` 규칙 발동**: `Filter(price_rank ≤ 5) over Window(row_number())` 패턴 인식 → Window 아래에 `logical.WindowGroupLimit(..., 5)` 삽입. `Filter`와 `Window`는 의미 보존을 위해 유지. | [03/predicate-pushdown.md](../03-logical-optimization/predicate-pushdown.md) |
+| 03 Logical Optimization | Column pruning (17→6), predicate pushdown (WHERE → 아래로 + `LIKE → StartsWith` + `IS NOT NULL`), **`InferWindowGroupLimit` 규칙 발동**: `Filter(price_rank ≤ 5) over Window(row_number())` 패턴 인식 → Window 아래에 `logical.WindowGroupLimit(..., 5)` 삽입. `Filter`와 `Window`는 의미 보존을 위해 유지. | [03/predicate-pushdown.md](../03-logical-optimization/predicate-pushdown.md), [03/column-pruning.md](../03-logical-optimization/column-pruning.md), [03/like-simplification.md](../03-logical-optimization/like-simplification.md), [03/infer-filters-from-constraints.md](../03-logical-optimization/infer-filters-from-constraints.md), [03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md) |
 | 04 Physical Planning | `Window` strategy가 `WindowExec` 생성 (SparkStrategies.scala:641-655). `WindowGroupLimit` strategy가 **단일 논리 노드를 Partial + Final 두 물리 노드로 분할** (SparkStrategies.scala:657-667). `EnsureRequirements`(line 71-80)가 Final 위에 `Exchange hashpartitioning(agent_gu, 200)` + Sort 배치, outer ORDER BY는 `OrderedDistribution.createPartitioning`을 통해 `Exchange rangepartitioning` + Sort로 배치. RangePartitioning ↔ OrderedDistribution prefix 매칭은 [04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md) 박스 ② (`partitioning.scala:449-467`). | [04/window-exec.md](../04-physical-planning/window-exec.md), [04/window-group-limit.md](../04-physical-planning/window-group-limit.md), [04/ensure-requirements.md](../04-physical-planning/ensure-requirements.md), [04/partitioning-compatibility.md](../04-physical-planning/partitioning-compatibility.md), [04/hash-aggregate-partial-final.md](../04-physical-planning/hash-aggregate-partial-final.md) (교차 패턴), [04/batch-scan-iceberg.md](../04-physical-planning/batch-scan-iceberg.md) |
 | 05 Cost & AQE | `AdaptiveSparkPlan isFinalPlan=false`. EXPLAIN COST는 30.5 MiB 전후 — 쿼리 A 같은 fallback 폭발 없음. | [05/aqe-overview.md](../05-cost-and-aqe/aqe-overview.md) |
 | 06 Codegen | 추측 금지. fused 가능 구역 추정만. | (별도 trace) |
@@ -317,12 +322,7 @@ Java 개발자 관점에서는 다음과 같다:
 | `PushDownPredicates` | WHERE가 Window 아래 Project 아래로 |
 | `InferFiltersFromConstraints` | `isnotnull(deal_year)`, `isnotnull(agent_gu)` 자동 추가 |
 | `LikeSimplification` | `LIKE '서울%'` → `StartsWith(agent_gu, 서울)` |
-| **`InsertWindowGroupLimit`** (추정 이름) | `logical.WindowGroupLimit` 노드가 Window 아래 삽입됨 |
-
-> 📝 `InsertWindowGroupLimit` 규칙 정의는 `sql/catalyst/.../optimizer/`
-> 아래 예상 — 어제 ingest 범위 밖. 규칙 이름, 패턴 매칭 조건, 지원하는
-> rank-like function 목록, `≤ N` 외 다른 filter 형태 지원 여부는 소스
-> ingest 후 기록.
+| **`InferWindowGroupLimit`** | `logical.WindowGroupLimit` 노드가 Window 아래 삽입됨. 정의: `optimizer/InferWindowGroupLimit.scala:45`, batch wiring: `SparkOptimizer.scala:96-101`. 자세한 메커니즘 + 두 갈래 출력 분기는 [03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md). |
 
 ### 관찰 요점
 
@@ -670,14 +670,16 @@ stage 하나로 3 stage 구조였다. 쿼리 B는 단일 scan 경로이지만 **
 
 ### 단계 03 — Logical Optimization
 
-- [관찰됨] **`InsertWindowGroupLimit` 규칙** — Optimizer가 삽입한 물리
-  성격의 논리 노드.
-- [소스 ingest 필요] `sql/catalyst/.../optimizer/InsertWindowGroupLimit.scala`
-  또는 `Optimizer.scala`의 해당 rule batch. 정확한 규칙 이름, 매칭 조건,
-  지원하는 rank-like function과 filter 형태 확정.
-- [후속 페이지 후보] `wiki/03-logical-optimization/insert-window-group-limit.md`
-  또는 `wiki/03-logical-optimization/physical-inspired-optimizations.md` (이
-  같은 "물리 성격의 논리 최적화" 패턴을 모은 페이지).
+- [페이지 작성 완료] **`InferWindowGroupLimit` 규칙** —
+  [03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md)
+  (verified, 2026-04-26 사이클). 실제 클래스명은 Insert 아닌 Infer.
+  정의: `optimizer/InferWindowGroupLimit.scala`, batch wiring:
+  `SparkOptimizer.scala:96-101` (Catalyst defaultBatches 부재 — SparkOptimizer
+  전용).
+- [후속 페이지 후보] `wiki/03-logical-optimization/physical-inspired-optimizations.md`
+  — "물리 성격의 논리 최적화" 패턴을 모은 cross-cutting 페이지 (현재
+  infer-window-group-limit 단발 사례. 후속 trace에서 동일 패턴 누적 후
+  생성).
 
 ### 단계 04 — Physical Planning
 
@@ -746,7 +748,7 @@ stage 하나로 3 stage 구조였다. 쿼리 B는 단일 scan 경로이지만 **
 - 생성 명령: `/trace query-B-row-number-top5`
 - 생성된 skeleton: 2개
   - `04-physical-planning/window-exec.md` (L3에 SparkStrategies.scala:641-655 인용, 나머지 tentative)
-  - `04-physical-planning/window-group-limit.md` (L3에 SparkStrategies.scala:657-667 인용, InsertWindowGroupLimit rule은 Optimizer 미-ingest)
+  - `04-physical-planning/window-group-limit.md` (L3에 SparkStrategies.scala:657-667 인용, 짝이 되는 Catalyst rule은 2026-04-26 사이클에서 [03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md) verified로 작성됨)
 - 재인용한 기존 skeleton: 4개 (analyzer-overview, predicate-pushdown, hash-aggregate-partial-final [교차 패턴], batch-scan-iceberg)
 - 인용한 verified 페이지: `SparkStrategies.scala` 직접 인용 2회 (Window + WindowGroupLimit strategies)
 - 다음 우선 trace: 쿼리 C (`/trace query-C-window-moving-avg`) — WindowGroupLimit이 **아닌** Window 케이스 (aggregate-over-window + CTE). 또는 동일 쿼리 A/B/C의 `.show()` 후 AQE executed plan 재캡처.

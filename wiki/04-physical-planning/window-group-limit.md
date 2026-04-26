@@ -142,11 +142,14 @@ object WindowGroupLimit extends Strategy {
   단계의 `EnsureRequirements` rule이 Final 측의 distribution 요구 사항을 보고
   자동 삽입.
 
-### Logical Optimizer 측 규칙 — `InsertWindowGroupLimit`
+### Logical Optimizer 측 규칙 — `InferWindowGroupLimit`
 
-> 📝 Optimizer.scala ingest 대기 중
-> (`sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/optimizer/InsertWindowGroupLimit.scala`
-> 또는 `Optimizer.scala`의 rule batch).
+> ✅ 2026-04-26 사이클로 verified 페이지 작성 완료 —
+> [03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md).
+> 실제 클래스명은 `InferWindowGroupLimit` (Insert가 아닌 Infer). 정의는
+> `sql/catalyst/src/main/scala/org/apache/spark/sql/catalyst/optimizer/InferWindowGroupLimit.scala:45`,
+> batch wiring은 `SparkOptimizer.scala:96-101` (Catalyst defaultBatches에는
+> 부재 — SparkOptimizer 전용 batch).
 
 Plan 관찰로부터 추론된 사실 (소스 ingest 전):
 - Analyzed plan에는 없고 Optimized plan에 등장 → Catalyst rule에 의한 삽입.

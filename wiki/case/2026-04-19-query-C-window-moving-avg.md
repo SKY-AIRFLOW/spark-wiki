@@ -10,8 +10,12 @@ confidence: verified
 related:
   - 00-overview/execution-pipeline.md
   - 02-analysis/analyzer-overview.md
-  - 03-logical-optimization/predicate-pushdown.md
+  - 03-logical-optimization/column-pruning.md
   - 03-logical-optimization/cte-inline.md
+  - 03-logical-optimization/infer-filters-from-constraints.md
+  - 03-logical-optimization/infer-window-group-limit.md
+  - 03-logical-optimization/like-simplification.md
+  - 03-logical-optimization/predicate-pushdown.md
   - 04-physical-planning/ensure-requirements.md
   - 04-physical-planning/partitioning-compatibility.md
   - 04-physical-planning/hash-aggregate-partial-final.md
@@ -132,7 +136,7 @@ ORDER BY agent_gu, deal_year, deal_month
 |---|---|---|
 | A | 해당 없음 | Window 자체 없음 |
 | B | **적용** | `Filter(price_rank ≤ 5) over Window(row_number())` 패턴 매칭 → Optimizer가 `logical.WindowGroupLimit` 삽입 → strategy가 Partial + Final로 분할 |
-| C | **미적용** | `AVG()`는 rank-like 함수 아님 → Optimizer 규칙(`InsertWindowGroupLimit` 류) 미매칭 → `logical.WindowGroupLimit` 노드 삽입 안 됨 → strategy 발동 조건 불충족 |
+| C | **미적용** | `AVG()`는 rank-like 함수 아님 → `InferWindowGroupLimit`의 `support()` 분기 ([03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md))가 `Rank|DenseRank|RowNumber`만 매치 → `logical.WindowGroupLimit` 노드 삽입 안 됨 → strategy 발동 조건 불충족 |
 
 **verified 소스 근거** (`raw/spark-source/v3.5.6/sql/core/.../SparkStrategies.scala:657-667`):
 
@@ -368,8 +372,9 @@ Optimized plan에 `WindowGroupLimit` 노드가 없음. 조건 확인:
 - Window function이 `AVG()` — rank-like function이 아님.
 
 `SparkStrategies.scala:657-667`의 strategy는 `logical.WindowGroupLimit`
-노드를 찾는데, 그 노드는 upstream Catalyst rule (`InsertWindowGroupLimit`
-류)이 삽입한다. rule의 삽입 조건 (rank-like function + limit filter)은
+노드를 찾는데, 그 노드는 upstream Catalyst rule `InferWindowGroupLimit`
+([03/infer-window-group-limit.md](../03-logical-optimization/infer-window-group-limit.md))이
+삽입한다. rule의 삽입 조건 (rank-like function + limit filter)은
 쿼리 C에서 둘 다 불충족 → 노드 없음 → strategy 발동 안 됨.
 
 참조: [04-physical-planning/window-group-limit.md](../04-physical-planning/window-group-limit.md).
@@ -843,5 +848,7 @@ drop, spill 정책)은 별도 관찰 대상.
   - **최우선 2**: `partitioning-compatibility.md` — 쿼리 C의 핵심 발견 (추가
     Exchange 불가피성).
   - 세 쿼리 모두 `.show()` 후 executed plan 재캡처 → AQE 런타임 결정 관찰.
-  - Optimizer.scala ingest → `InlineCTE`, `InsertWindowGroupLimit`, 기타
-    단계 03 규칙들 verified로 승격.
+  - Optimizer.scala ingest → 2026-04-26 사이클로 완료. `InlineCTE`,
+    `InferWindowGroupLimit` (Insert가 아닌 Infer), `ColumnPruning`,
+    `LikeSimplification`, `InferFiltersFromConstraints`, `PushDownPredicates`
+    모두 verified로 승격됨.

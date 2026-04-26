@@ -6,6 +6,12 @@
 
 | Config | Default | Stage | Pages |
 |---|---|---|---|
+| `spark.sql.constraintPropagation.enabled` | true | 03 | [infer-filters-from-constraints](../../wiki/03-logical-optimization/infer-filters-from-constraints.md) |
+| `spark.sql.legacy.ctePrecedencePolicy` | EXCEPTION | 03 | [cte-inline](../../wiki/03-logical-optimization/cte-inline.md) |
+| `spark.sql.optimizer.dynamicPartitionPruning.enabled` | true | 03 | [predicate-pushdown](../../wiki/03-logical-optimization/predicate-pushdown.md) |
+| `spark.sql.optimizer.excludedRules` | (none) | 03 | [predicate-pushdown](../../wiki/03-logical-optimization/predicate-pushdown.md), [cte-inline](../../wiki/03-logical-optimization/cte-inline.md), [column-pruning](../../wiki/03-logical-optimization/column-pruning.md), [like-simplification](../../wiki/03-logical-optimization/like-simplification.md), [infer-filters-from-constraints](../../wiki/03-logical-optimization/infer-filters-from-constraints.md) |
+| `spark.sql.optimizer.topKSortFallbackThreshold` | (verify) | 03 | [infer-window-group-limit](../../wiki/03-logical-optimization/infer-window-group-limit.md) |
+| `spark.sql.optimizer.windowGroupLimitThreshold` | 1000 | 03 | [infer-window-group-limit](../../wiki/03-logical-optimization/infer-window-group-limit.md) |
 | `spark.sql.autoBroadcastJoinThreshold` | 10485760 (10 MB) | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md) |
 | `spark.sql.broadcastTimeout` | 300 | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md) |
 | `spark.sql.join.preferSortMergeJoin` | true | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md) |
