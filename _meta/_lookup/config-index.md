@@ -6,6 +6,7 @@
 
 | Config | Default | Stage | Pages |
 |---|---|---|---|
+| `spark.sql.cbo.enabled` | false | 03 | [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `spark.sql.constraintPropagation.enabled` | true | 03 | [infer-filters-from-constraints](../../wiki/03-logical-optimization/infer-filters-from-constraints.md) |
 | `spark.sql.legacy.ctePrecedencePolicy` | EXCEPTION | 03 | [cte-inline](../../wiki/03-logical-optimization/cte-inline.md) |
 | `spark.sql.optimizer.dynamicPartitionPruning.enabled` | true | 03 | [predicate-pushdown](../../wiki/03-logical-optimization/predicate-pushdown.md) |
@@ -23,7 +24,7 @@
 | `spark.sql.maxSinglePartitionBytes` | 128 MB (verify) | 04 | [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
 | `spark.sql.requireAllClusterKeysForCoPartition` | true | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
 | `spark.sql.requireAllClusterKeysForDistribution` | false | 04 | [partitioning-compatibility](../../wiki/04-physical-planning/partitioning-compatibility.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
-| `spark.sql.shuffle.partitions` | 200 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md) |
+| `spark.sql.shuffle.partitions` | 200 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md), [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `spark.sql.sources.parallelPartitionDiscovery.parallelism` | 10000 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `spark.sql.sources.parallelPartitionDiscovery.threshold` | 32 | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `spark.sql.sources.v2.bucketing.allowCompatibleTransforms.enabled` | false | 04 | [storage-partition-join](../../wiki/04-physical-planning/storage-partition-join.md) |
@@ -39,7 +40,7 @@
 | `spark.sql.adaptive.coalescePartitions.minPartitionSize` | 1MB | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
 | `spark.sql.adaptive.coalescePartitions.parallelismFirst` | true | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
 | `spark.sql.adaptive.customCostEvaluatorClass` | (none) | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
-| `spark.sql.adaptive.enabled` | true (default since 3.2.0) | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
+| `spark.sql.adaptive.enabled` | true (default since 3.2.0) | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md), [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `spark.sql.adaptive.forceOptimizeSkewedJoin` | false | 05 | [aqe-skew-join](../../wiki/05-cost-and-aqe/aqe-skew-join.md) |
 | `spark.sql.adaptive.localShuffleReader.enabled` | true | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |
 | `spark.sql.adaptive.maxShuffledHashJoinLocalMapThreshold` | 0 | 05 | [aqe-overview](../../wiki/05-cost-and-aqe/aqe-overview.md) |

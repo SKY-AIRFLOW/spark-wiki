@@ -9,6 +9,7 @@ DataFrame / SQL API → 주로 처리되는 파이프라인 단계 + 관련 페�
 | API | Stage | Pages |
 |---|---|---|
 | `DataFrame.filter` | 03 | [predicate-pushdown](../../wiki/03-logical-optimization/predicate-pushdown.md) |
+| `DataFrame.queryExecution.optimizedPlan` | 03 | [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `DataFrame.select` | 03 | [column-pruning](../../wiki/03-logical-optimization/column-pruning.md) |
 | `DataFrame.where` | 03 | [predicate-pushdown](../../wiki/03-logical-optimization/predicate-pushdown.md) |
 | SQL `WITH <name> AS (...)` | 03 | [cte-inline](../../wiki/03-logical-optimization/cte-inline.md) |
@@ -19,10 +20,13 @@ DataFrame / SQL API → 주로 처리되는 파이프라인 단계 + 관련 페�
 | SQL `SELECT` projection | 03 | [column-pruning](../../wiki/03-logical-optimization/column-pruning.md) |
 | SQL `WHERE` | 03 | [predicate-pushdown](../../wiki/03-logical-optimization/predicate-pushdown.md), [infer-filters-from-constraints](../../wiki/03-logical-optimization/infer-filters-from-constraints.md) |
 | `DataFrame.coalesce` | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
+| `DataFrame.explain` | 04 | [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `DataFrame.groupBy` | 04 | [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md), [partitioning-compatibility](../../wiki/04-physical-planning/partitioning-compatibility.md), [hash-aggregate-partial-final](../../wiki/04-physical-planning/hash-aggregate-partial-final.md) |
 | `DataFrame.hint` | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md), [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `DataFrame.join` | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md), [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md), [partitioning-compatibility](../../wiki/04-physical-planning/partitioning-compatibility.md) |
 | `DataFrame.orderBy` | 04 | [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md), [partitioning-compatibility](../../wiki/04-physical-planning/partitioning-compatibility.md) |
+| `DataFrame.queryExecution.executedPlan` | 04 | [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
+| `DataFrame.queryExecution.sparkPlan` | 04 | [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `DataFrame.repartition` | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `DataFrame.repartitionByRange` | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | `Window.partitionBy` | 04 | [ensure-requirements](../../wiki/04-physical-planning/ensure-requirements.md), [partitioning-compatibility](../../wiki/04-physical-planning/partitioning-compatibility.md), [window-exec](../../wiki/04-physical-planning/window-exec.md) |
@@ -34,6 +38,7 @@ DataFrame / SQL API → 주로 처리되는 파이프라인 단계 + 관련 페�
 | SQL `/*+ REPARTITION_BY_RANGE */` | 04 | [coalesce-repartition-hints](../../wiki/04-physical-planning/coalesce-repartition-hints.md) |
 | SQL `/*+ SHUFFLE_HASH */` | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md) |
 | SQL `/*+ SHUFFLE_REPLICATE_NL */` | 04 | [join-strategy-hints](../../wiki/04-physical-planning/join-strategy-hints.md) |
+| `SparkSession.sessionState.planner.strategies` | 04 | [strategy-framework](../../wiki/04-physical-planning/strategy-framework.md) |
 | `ANALYZE TABLE` | 05 | [leveraging-statistics](../../wiki/05-cost-and-aqe/leveraging-statistics.md) |
 | `DataFrame.explain(mode="cost")` | 05 | [leveraging-statistics](../../wiki/05-cost-and-aqe/leveraging-statistics.md) |
 | `DESCRIBE EXTENDED` | 05 | [leveraging-statistics](../../wiki/05-cost-and-aqe/leveraging-statistics.md) |
